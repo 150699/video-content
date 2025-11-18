@@ -2,7 +2,7 @@ import streamlit as st
 from evaluator import Evaluator
 from transcript import get_transcript_from_youtube, load_transcript_from_file
 
-st.title("🎥 Video Content Relevance Evaluator")
+st.title(" Video Content Relevance Evaluator")
 st.write("Analyze if a video's content matches its title & topic.")
 
 evaluator = Evaluator()
@@ -48,8 +48,8 @@ if st.button("Evaluate Relevance"):
     else:
         result = evaluator.evaluate(title, description, transcript_text)
 
-        st.subheader("📊 Relevance Score")
+        st.subheader(" Relevance Score")
         st.metric("Score", f"{result['score']} %")
 
-        st.subheader("📝 Explanation")
+        st.subheader(" Explanation")
         st.write(result["explanation"])

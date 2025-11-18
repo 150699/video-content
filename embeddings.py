@@ -1,7 +1,11 @@
 import numpy as np
 from openai import OpenAI
+from dotenv import load_dotenv
+import os
 
-client = OpenAI(api_key="pk_a1999_b15_c06")
+load_dotenv()
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def get_embedding(text: str, model: str = "text-embedding-3-small"):
     if not text or text.strip() == "":
