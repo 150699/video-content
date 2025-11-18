@@ -1,55 +1,55 @@
 import streamlit as st
 from evaluator import Evaluator
-from segmenter import simple_segmenter
+from transcript import get_transcript_from_youtube, load_transcript_from_file
 
 st.title("🎥 Video Content Relevance Evaluator")
-st.write("Upload transcript + enter title to evaluate relevance.")
+st.write("Analyze if a video's content matches its title & topic.")
+
+evaluator = Evaluator()
+
+# --- Input Section ---
+option = st.radio("Select Input Method:", ["YouTube URL", "Upload Transcript File"])
+
+title = st.text_input("Video Title")
+description = st.text_area("Video Description (optional)")
+
+transcript_text = ""
+
+# If YouTube selected
+if option == "YouTube URL":
+    youtube_url = st.text_input("Enter YouTube Video URL")
+
+    if youtube_url:
+        with st.spinner("Fetching transcript..."):
+            transcript_text, error = get_transcript_from_youtube(youtube_url)
+
+        if error:
+            st.error(error)
+        else:
+            st.success("Transcript fetched successfully!")
+            st.text_area("Transcript Preview:", transcript_text, height=200)
+
+# If File Upload selected
+else:
+    uploaded_file = st.file_uploader("Upload a .txt transcript file", type=["txt"])
+
+    if uploaded_file:
+        content = uploaded_file.read().decode("utf-8")
+        transcript_text = content
+        st.text_area("Transcript Preview:", transcript_text, height=200)
 
 
-# -------------------------------------------
-# INPUTS
-# -------------------------------------------
-
-title = st.text_input("Video Title / Topic")
-description = st.text_area("Video Description (Optional)")
-
-transcript = st.text_area(
-    "Paste Video Transcript",
-    placeholder="Paste full text transcript of the video here..."
-)
-
-
-# -------------------------------------------
-# PROCESS BUTTON
-# -------------------------------------------
-
-if st.button("Run Evaluation"):
+# --- Submit for Evaluation ---
+if st.button("Evaluate Relevance"):
     if not title:
-        st.error(" Title is required!")
-    elif not transcript:
-        st.error(" Transcript is required!")
+        st.error("Please enter a title!")
+    elif not transcript_text:
+        st.error("Transcript unavailable!")
     else:
-        st.info("⏳ Processing... Please wait...")
+        result = evaluator.evaluate(title, description, transcript_text)
 
-        # 1. Segment transcript
-        segments = simple_segmenter(transcript, window_size=40)
+        st.subheader("📊 Relevance Score")
+        st.metric("Score", f"{result['score']} %")
 
-        # 2. Evaluate using model
-        evaluator = Evaluator(title, description)
-        scored_segments = evaluator.score_segments(segments)
-        final_score = evaluator.aggregate_score(scored_segments)
-
-        # -------------------------------------------
-        # OUTPUT
-        # -------------------------------------------
-        st.success(f"✅ Relevance Score: **{final_score}%**")
-
-        # Detailed view
-        st.subheader("Segment Scores")
-        for seg in scored_segments:
-            sim = round((seg['similarity'] + 1) / 2 * 100, 2)
-            st.write(
-                f"**Segment {seg['start']}–{seg['end']}** "
-                f"- Relevance: **{sim}%**\n"
-                f"Text: _{seg['text']}_"
-            )
+        st.subheader("📝 Explanation")
+        st.write(result["explanation"])

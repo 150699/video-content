@@ -1,70 +1,51 @@
 from embeddings import get_embedding, cosine
 
-SIM_RELEVANT = 0.65
-SIM_PARTIAL = 0.45
-
-
 class Evaluator:
-    def __init__(self, title, description=None):
-        self.title = title
-        self.description = description
+    def __init__(self):
+        pass
 
-        # Create embeddings
-        self.title_emb = get_embedding(title)
-        self.desc_emb = get_embedding(description) if description else None
+    def evaluate(self, title, description, transcript):
+        """Evaluate how relevant the transcript is to the title/description."""
+        
+        if not transcript:
+            return {
+                "score": 0,
+                "explanation": "Transcript not available."
+            }
 
-    def score_segments(self, segments):
-        """
-        segments → list of:
-        {
-            'start': seconds,
-            'end': seconds,
-            'text': "segment text"
+        # Combine title + description as the expected topic
+        combined_topic = title
+        if description:
+            combined_topic += " " + description
+
+        # Generate embeddings
+        topic_emb = get_embedding(combined_topic)
+        transcript_emb = get_embedding(transcript)
+
+        # Compare using cosine similarity
+        similarity = cosine(topic_emb, transcript_emb)
+
+        # Convert similarity to percentage score
+        relevance_score = round(similarity * 100, 2)
+
+        # Explanation
+        explanation = self.generate_explanation(relevance_score)
+
+        return {
+            "score": relevance_score,
+            "explanation": explanation
         }
-        """
-        results = []
-        for seg in segments:
-            seg_emb = get_embedding(seg["text"])
-            sim_title = cosine(self.title_emb, seg_emb)
 
-            if self.desc_emb:
-                sim_desc = cosine(self.desc_emb, seg_emb)
-                similarity = max(sim_title, sim_desc)
-            else:
-                similarity = sim_title
+    def generate_explanation(self, score):
+        if score > 80:
+            return "Content strongly matches the provided title/topic."
+        elif score > 60:
+            return "Content is mostly relevant but contains some off-topic sections."
+        elif score > 40:
+            return "Content partially matches the title, with several irrelevant sections."
+        else:
+            return "Content is largely irrelevant to the given title/topic."
 
-            results.append({
-                **seg,
-                "similarity": similarity
-            })
 
-        return results
-
-    def aggregate_score(self, scored_segments):
-        """
-        Convert similarity scores (-1 to 1) → final score (0–100)
-        weighted by segment duration
-        """
-        weights = []
-        values = []
-
-        for seg in scored_segments:
-            duration = seg["end"] - seg["start"]
-            score_0_1 = (seg["similarity"] + 1) / 2   # normalize to 0–1
-
-            weights.append(duration)
-            values.append(score_0_1)
-
-        # Weighted average
-        total_weight = sum(weights)
-        base_score = sum(w * v for w, v in zip(weights, values)) / (total_weight + 1e-9)
-
-        final_score = base_score * 100
-
-        # Clamp
-        if final_score < 0:
-            final_score = 0
-        if final_score > 100:
-            final_score = 100
-
-        return round(final_score, 2)
+if __name__ == "__main__":
+    print("Evaluator module ready.")
