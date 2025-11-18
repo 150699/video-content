@@ -1,0 +1,7 @@
+streamlit
+openai
+numpy
+sentence-transformers
+pydub
+yt_dlp
+whisper
